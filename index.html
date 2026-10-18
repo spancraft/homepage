@@ -62,9 +62,11 @@
   }
   footer {
     position: fixed; z-index: 1; left: 0; right: 0; bottom: 1.4rem;
-    text-align: center; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    text-align: center; font-size: .8rem; letter-spacing: .12em;
     color: rgba(245,242,234,.45);
   }
+  footer a { color: inherit; text-decoration: none; transition: color .3s; }
+  footer a:hover, footer a:focus-visible { color: var(--terracotta); }
   .mark, .words > * { opacity: 0; animation: rise 1.4s cubic-bezier(.2,.7,.2,1) forwards; }
   h1 { animation-delay: .3s; }
   .soon { animation-delay: .55s; }
@@ -84,7 +86,7 @@
   <h1>SPANCRAFT</h1>
   <p class="soon">Coming soon</p>
 </div>
-<footer>Nashik · spancraft.in</footer>
+<footer><a href="mailto:hello@spancraft.in">hello@spancraft.in</a></footer>
 <script>
 // An endless walk through a vault of line-drawn arches. The arches share the logo's
 // proportions (legs as tall as the radius), so the logo sits at the vanishing point;
