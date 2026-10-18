@@ -24,6 +24,7 @@
     --night: #0E1422;
     --paper: #F5F2EA;
     --terracotta: #E88A63;
+    --mark: clamp(2.25rem, 10vw, 3.25rem); /* width of the arch's front face */
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; }
@@ -37,64 +38,72 @@
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   .veil {
     position: fixed; inset: 0; pointer-events: none;
-    background: radial-gradient(ellipse 34rem 20rem at 50% 50%, rgba(14,20,34,.92) 0%, rgba(14,20,34,.6) 45%, rgba(14,20,34,0) 100%);
+    background: radial-gradient(ellipse 24rem 20rem at 50% 58%, rgba(14,20,34,.9) 0%, rgba(14,20,34,.55) 45%, rgba(14,20,34,0) 100%);
   }
-  main {
-    position: relative; z-index: 1; min-height: 100%;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 2rem 1rem; text-align: center;
+  /* The mark's front face is centred on the page, at the vault's vanishing point. */
+  .mark {
+    position: fixed; left: 50%; top: 50%; z-index: 1;
+    width: calc(var(--mark) * 1.17); height: auto;
+    transform: translate(-42.74%, -54.46%);
   }
-  h1 { line-height: 0; }
-  h1 img { width: min(26rem, 78vw); height: auto; }
+  .words {
+    position: fixed; left: 0; right: 0; z-index: 1;
+    top: calc(50% + var(--mark) / 2 + 1.6rem);
+    text-align: center; padding: 0 1rem;
+  }
+  h1 {
+    font-weight: 300; font-size: clamp(.95rem, 3.6vw, 1.15rem);
+    letter-spacing: .5em; padding-left: .5em; /* balance the tracking */
+  }
   .soon {
-    margin-top: 1.6rem;
-    font-size: .8rem; letter-spacing: .42em; text-transform: uppercase;
-    color: var(--terracotta);
-    padding-left: .42em; /* balance the tracking */
-  }
-  .what {
-    margin-top: 1rem; max-width: 26rem;
-    font-size: 1rem; line-height: 1.6; color: rgba(245,242,234,.72);
+    margin-top: .9rem;
+    font-size: .68rem; letter-spacing: .42em; padding-left: .42em;
+    text-transform: uppercase; color: var(--terracotta);
   }
   footer {
     position: fixed; z-index: 1; left: 0; right: 0; bottom: 1.4rem;
     text-align: center; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
     color: rgba(245,242,234,.45);
   }
-  main > * { opacity: 0; animation: rise 1.4s cubic-bezier(.2,.7,.2,1) forwards; }
-  .soon { animation-delay: .35s; }
-  .what { animation-delay: .6s; }
-  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { main > * { animation: none; opacity: 1; } }
+  .mark, .words > * { opacity: 0; animation: rise 1.4s cubic-bezier(.2,.7,.2,1) forwards; }
+  h1 { animation-delay: .3s; }
+  .soon { animation-delay: .55s; }
+  @keyframes rise { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .mark, .words > * { animation: none; opacity: 1; } }
 </style>
 </head>
 <body>
 <canvas id="vault" aria-hidden="true"></canvas>
 <div class="veil"></div>
-<main>
-  <h1><img src="assets/logo.svg" alt="Spancraft" width="622" height="170"></h1>
+<svg class="mark" viewBox="0 -9.8 117 109.8" aria-hidden="true">
+  <path fill-rule="evenodd" d="M0 100V50A50 50 0 0 1 25.03 6.68L42.03 -3.12A50 50 0 0 1 117 40.2V90.2L100 100ZM37 100V40.2A30 30 0 0 1 44.34 20.54A30 30 0 0 1 80 50V100Z" fill="#E88A63"/>
+  <path fill-rule="evenodd" d="M20 100V50A30 30 0 0 1 80 50V100ZM37 100V40.2A30 30 0 0 1 44.34 20.54A30 30 0 0 1 80 50V100Z" fill="#0E1422" opacity="0.3"/>
+  <path fill-rule="evenodd" d="M0 100V50A50 50 0 0 1 100 50V100ZM20 100V50A30 30 0 0 1 80 50V100Z" fill="#F5F2EA"/>
+</svg>
+<div class="words">
+  <h1>SPANCRAFT</h1>
   <p class="soon">Coming soon</p>
-  <p class="what">3D drawings, walkthrough films and interactive models for architecture and real estate.</p>
-</main>
+</div>
 <footer>Nashik · spancraft.in</footer>
 <script>
-// An endless walk through a vault of line-drawn arches, echoing the arch in the logo.
+// An endless walk through a vault of line-drawn arches. The arches share the logo's
+// proportions (legs as tall as the radius), so the logo sits at the vanishing point;
+// arches fade in some way in front of it, leaving space around it, and come out towards the viewer.
 (() => {
   const canvas = document.getElementById('vault');
+  const mark = document.querySelector('.mark');
   const ctx = canvas.getContext('2d');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const SPACING = 1.5;   // metres between arches
-  const COUNT = 26;
-  const NEAR = 0.5, FAR = SPACING * COUNT;
-  const EYE = 1.6;       // eye height above the floor
-  const SPRING = 2.3;    // height where the arch starts to curve
-  const OUTER = 2.4, INNER = 1.95;
-  const SPEED = 0.45;    // metres per second
-  const ACCENT_EVERY = 7;
+  const RADIUS = 2.4;    // metres; legs are as tall as the radius, like the logo
+  const EYE = RADIUS;    // eye at the spring line, so the vanishing point is the arch's centre
+  const SPACING = 2.6;   // metres between arches
+  const NEAR = 0.5;
+  const SPEED = 0.25;    // metres per second
+  const ACCENT_EVERY = 5;
+  const CLEAR = 3.4;     // arches first appear at this many times the logo's size, leaving space around it
 
-  let w, h, f, cx, cy;
-  const look = { x: 0, y: 0, tx: 0, ty: 0 };
+  let w, h, f, cx, cy, logo, far;
 
   function resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -103,62 +112,65 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     f = Math.min(w, h) * 0.85;
     cx = w / 2; cy = h / 2;
+    // The depth at which an arch is exactly the size of the logo's front face.
+    const face = mark.getBoundingClientRect().width * 100 / 117;
+    logo = f * 2 * RADIUS / face;
+    far = logo / CLEAR;
     if (still) draw(0);
   }
 
-  const project = (x, y, z) => [cx + ((x - look.x) / z) * f, cy - ((y - EYE - look.y) / z) * f];
+  const project = (x, y, z) => [cx + (x / z) * f, cy - ((y - EYE) / z) * f];
 
-  function archPath(r, z) {
-    const [lx, ly] = project(-r, 0, z);
+  // One arch outline plus its floor joint. An arch seen head-on projects to a true
+  // circle, so it is drawn with arc() rather than short segments, which shimmer as they move.
+  function archPath(z) {
+    const s = f / z;
+    const [lx, ly] = project(-RADIUS, 0, z);
+    const [, sy] = project(0, RADIUS, z);
+    const rx = cx + RADIUS * s;
     ctx.moveTo(lx, ly);
-    for (let i = 0; i <= 24; i++) {
-      const a = Math.PI - (i / 24) * Math.PI;
-      const [px, py] = project(Math.cos(a) * r, SPRING + Math.sin(a) * r, z);
-      ctx.lineTo(px, py);
-    }
-    const [rx, ry] = project(r, 0, z);
-    ctx.lineTo(rx, ry);
+    ctx.lineTo(lx, sy);
+    ctx.arc(cx, sy, RADIUS * s, Math.PI, 2 * Math.PI);
+    ctx.lineTo(rx, ly);
+    ctx.lineTo(lx, ly);
   }
 
   const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
   function draw(t) {
-    look.x += (look.tx - look.x) * 0.04;
-    look.y += (look.ty - look.y) * 0.04;
     ctx.clearRect(0, 0, w, h);
 
-    // Rails running to the vanishing point: arch feet and spring lines.
+    // Floor rails, from the viewer to where the arches begin.
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(245,242,234,0.07)';
+    ctx.strokeStyle = 'rgba(245,242,234,0.08)';
     ctx.beginPath();
-    for (const x of [-OUTER, -INNER, INNER, OUTER]) {
-      for (const y of [0, SPRING]) {
-        const [ax, ay] = project(x, y, NEAR);
-        const [bx, by] = project(x, y, FAR);
-        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-      }
+    for (const x of [-RADIUS, RADIUS]) {
+      const [ax, ay] = project(x, 0, NEAR);
+      const [bx, by] = project(x, 0, far);
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
     }
     ctx.stroke();
 
     const travelled = (t / 1000) * SPEED;
     const offset = travelled % SPACING;
     const first = Math.floor(travelled / SPACING);
+    const count = Math.ceil((far - NEAR) / SPACING) + 1;
     // Far to near, so nearer arches draw on top.
-    for (let i = COUNT - 1; i >= 0; i--) {
-      const z = NEAR + i * SPACING - offset + SPACING;
-      const fade = smooth(FAR, FAR * 0.45, z) * smooth(NEAR, NEAR + 2.2, z);
+    for (let i = count - 1; i >= 0; i--) {
+      const z = NEAR + (i + 1) * SPACING - offset;
+      if (z <= NEAR) continue;
+      const fade = smooth(far, far * 0.7, z) * smooth(NEAR, NEAR + 2.2, z);
       if (fade <= 0.002) continue;
       const accent = (first + i) % ACCENT_EVERY === 0;
-      ctx.lineWidth = Math.max(0.6, Math.min(2, 2.4 / z));
+      // Never thinner than a pixel; distant arches get fainter instead.
+      const thin = 2.4 / z;
+      ctx.lineWidth = Math.max(1, Math.min(2, thin));
+      const alpha = fade * Math.max(0.35, Math.min(1, thin));
       ctx.strokeStyle = accent
-        ? `rgba(232,138,99,${0.75 * fade})`
-        : `rgba(245,242,234,${0.32 * fade})`;
+        ? `rgba(232,138,99,${0.75 * alpha})`
+        : `rgba(245,242,234,${0.32 * alpha})`;
       ctx.beginPath();
-      archPath(OUTER, z);
-      archPath(INNER, z);
-      // Floor joint between the two arch legs.
-      const [ax, ay] = project(-OUTER, 0, z), [bx, by] = project(OUTER, 0, z);
-      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      archPath(z);
       ctx.stroke();
     }
   }
@@ -166,10 +178,6 @@
   function frame(t) { draw(t); requestAnimationFrame(frame); }
 
   addEventListener('resize', resize);
-  addEventListener('pointermove', e => {
-    look.tx = (e.clientX / w - 0.5) * 0.9;
-    look.ty = -(e.clientY / h - 0.5) * 0.5;
-  });
   resize();
   if (!still) requestAnimationFrame(frame);
 })();
