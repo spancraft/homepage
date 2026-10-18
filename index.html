@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spancraft · Coming soon</title>
+<meta name="description" content="Spancraft makes 3D drawings, walkthrough films and interactive models for architecture and real estate. Coming soon.">
+<meta name="theme-color" content="#0E1422">
+<meta property="og:title" content="Spancraft">
+<meta property="og:description" content="3D drawings, walkthrough films and interactive models. Coming soon.">
+<meta property="og:url" content="https://spancraft.in/">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preload" href="assets/outfit.ttf" as="font" type="font/ttf" crossorigin>
+<style>
+  @font-face {
+    font-family: "Outfit";
+    src: url("assets/outfit.ttf") format("truetype");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  :root {
+    --night: #0E1422;
+    --paper: #F5F2EA;
+    --terracotta: #E88A63;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--night);
+    color: var(--paper);
+    font-family: "Outfit", system-ui, sans-serif;
+    font-weight: 300;
+    overflow: hidden;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .veil {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 34rem 20rem at 50% 50%, rgba(14,20,34,.92) 0%, rgba(14,20,34,.6) 45%, rgba(14,20,34,0) 100%);
+  }
+  main {
+    position: relative; z-index: 1; min-height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2rem 1rem; text-align: center;
+  }
+  h1 { line-height: 0; }
+  h1 img { width: min(26rem, 78vw); height: auto; }
+  .soon {
+    margin-top: 1.6rem;
+    font-size: .8rem; letter-spacing: .42em; text-transform: uppercase;
+    color: var(--terracotta);
+    padding-left: .42em; /* balance the tracking */
+  }
+  .what {
+    margin-top: 1rem; max-width: 26rem;
+    font-size: 1rem; line-height: 1.6; color: rgba(245,242,234,.72);
+  }
+  footer {
+    position: fixed; z-index: 1; left: 0; right: 0; bottom: 1.4rem;
+    text-align: center; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    color: rgba(245,242,234,.45);
+  }
+  main > * { opacity: 0; animation: rise 1.4s cubic-bezier(.2,.7,.2,1) forwards; }
+  .soon { animation-delay: .35s; }
+  .what { animation-delay: .6s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { main > * { animation: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<canvas id="vault" aria-hidden="true"></canvas>
+<div class="veil"></div>
+<main>
+  <h1><img src="assets/logo.svg" alt="Spancraft" width="622" height="170"></h1>
+  <p class="soon">Coming soon</p>
+  <p class="what">3D drawings, walkthrough films and interactive models for architecture and real estate.</p>
+</main>
+<footer>Nashik · spancraft.in</footer>
+<script>
+// An endless walk through a vault of line-drawn arches, echoing the arch in the logo.
+(() => {
+  const canvas = document.getElementById('vault');
+  const ctx = canvas.getContext('2d');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const SPACING = 1.5;   // metres between arches
+  const COUNT = 26;
+  const NEAR = 0.5, FAR = SPACING * COUNT;
+  const EYE = 1.6;       // eye height above the floor
+  const SPRING = 2.3;    // height where the arch starts to curve
+  const OUTER = 2.4, INNER = 1.95;
+  const SPEED = 0.45;    // metres per second
+  const ACCENT_EVERY = 7;
+
+  let w, h, f, cx, cy;
+  const look = { x: 0, y: 0, tx: 0, ty: 0 };
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    f = Math.min(w, h) * 0.85;
+    cx = w / 2; cy = h / 2;
+    if (still) draw(0);
+  }
+
+  const project = (x, y, z) => [cx + ((x - look.x) / z) * f, cy - ((y - EYE - look.y) / z) * f];
+
+  function archPath(r, z) {
+    const [lx, ly] = project(-r, 0, z);
+    ctx.moveTo(lx, ly);
+    for (let i = 0; i <= 24; i++) {
+      const a = Math.PI - (i / 24) * Math.PI;
+      const [px, py] = project(Math.cos(a) * r, SPRING + Math.sin(a) * r, z);
+      ctx.lineTo(px, py);
+    }
+    const [rx, ry] = project(r, 0, z);
+    ctx.lineTo(rx, ry);
+  }
+
+  const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  function draw(t) {
+    look.x += (look.tx - look.x) * 0.04;
+    look.y += (look.ty - look.y) * 0.04;
+    ctx.clearRect(0, 0, w, h);
+
+    // Rails running to the vanishing point: arch feet and spring lines.
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(245,242,234,0.07)';
+    ctx.beginPath();
+    for (const x of [-OUTER, -INNER, INNER, OUTER]) {
+      for (const y of [0, SPRING]) {
+        const [ax, ay] = project(x, y, NEAR);
+        const [bx, by] = project(x, y, FAR);
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      }
+    }
+    ctx.stroke();
+
+    const travelled = (t / 1000) * SPEED;
+    const offset = travelled % SPACING;
+    const first = Math.floor(travelled / SPACING);
+    // Far to near, so nearer arches draw on top.
+    for (let i = COUNT - 1; i >= 0; i--) {
+      const z = NEAR + i * SPACING - offset + SPACING;
+      const fade = smooth(FAR, FAR * 0.45, z) * smooth(NEAR, NEAR + 2.2, z);
+      if (fade <= 0.002) continue;
+      const accent = (first + i) % ACCENT_EVERY === 0;
+      ctx.lineWidth = Math.max(0.6, Math.min(2, 2.4 / z));
+      ctx.strokeStyle = accent
+        ? `rgba(232,138,99,${0.75 * fade})`
+        : `rgba(245,242,234,${0.32 * fade})`;
+      ctx.beginPath();
+      archPath(OUTER, z);
+      archPath(INNER, z);
+      // Floor joint between the two arch legs.
+      const [ax, ay] = project(-OUTER, 0, z), [bx, by] = project(OUTER, 0, z);
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+  }
+
+  function frame(t) { draw(t); requestAnimationFrame(frame); }
+
+  addEventListener('resize', resize);
+  addEventListener('pointermove', e => {
+    look.tx = (e.clientX / w - 0.5) * 0.9;
+    look.ty = -(e.clientY / h - 0.5) * 0.5;
+  });
+  resize();
+  if (!still) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
